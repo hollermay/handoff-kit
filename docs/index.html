@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>handoff-kit: take your AI chat with you</title>
+<meta name="description" content="Export a Claude Code, Codex, Gemini or ChatGPT chat as a clean handoff another AI can continue from. Local, no dependencies, secrets removed.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="handoff-kit: take your AI chat with you">
+<meta property="og:description" content="Turn a Claude Code, Codex, Gemini or ChatGPT chat into a clean handoff the next AI can continue from. Local, no dependencies, secrets removed.">
+<meta property="og:url" content="https://hollermay.github.io/handoff-kit/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="handoff-kit: take your AI chat with you">
+<meta name="twitter:description" content="Continue a Claude Code chat in ChatGPT, Gemini or Codex without re-explaining anything.">
+<style>
+  :root {
+    --bg: #fbfaf7; --surface: #ffffff; --text: #1c1b19; --muted: #5f5c55;
+    --line: #e4e1d8; --accent: #c2410c; --accent-ink: #ffffff; --code-bg: #f3f1ea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161513; --surface: #1f1d1a; --text: #f1eee6; --muted: #aaa598;
+      --line: #34312b; --accent: #f08a4b; --accent-ink: #161513; --code-bg: #26231f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161513; --surface: #1f1d1a; --text: #f1eee6; --muted: #aaa598;
+    --line: #34312b; --accent: #f08a4b; --accent-ink: #161513; --code-bg: #26231f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+  header { padding: 20px 0; display: flex; justify-content: space-between; align-items: center; }
+  .brand { font-weight: 700; letter-spacing: -0.01em; }
+  nav a { color: var(--muted); text-decoration: none; margin-left: 20px; font-size: 15px; }
+  nav a:hover { color: var(--text); }
+  .hero { padding: 56px 0 40px; }
+  h1 { font-size: clamp(34px, 6vw, 54px); line-height: 1.08; letter-spacing: -0.03em; margin: 0 0 18px; }
+  .lede { font-size: 20px; color: var(--muted); max-width: 640px; margin: 0 0 28px; }
+  .btn {
+    display: inline-block; background: var(--accent); color: var(--accent-ink);
+    padding: 12px 20px; border-radius: 10px; font-weight: 600; text-decoration: none;
+  }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); margin-left: 8px; }
+  section { padding: 36px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 26px; letter-spacing: -0.02em; margin: 0 0 8px; }
+  p.sub { color: var(--muted); margin: 0 0 22px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; counter-reset: s; }
+  .step { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .step::before {
+    counter-increment: s; content: counter(s); display: inline-grid; place-items: center;
+    width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink);
+    font-size: 14px; font-weight: 700; margin-bottom: 10px;
+  }
+  .step h3 { margin: 0 0 6px; font-size: 17px; }
+  .step p { margin: 0; color: var(--muted); font-size: 15px; }
+  pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; overflow-x: auto; font-size: 14px; line-height: 1.55; margin: 0;
+  }
+  code.inline { background: var(--code-bg); padding: 2px 6px; border-radius: 6px; font-size: 0.9em; }
+  .cmd { position: relative; margin-bottom: 14px; }
+  .cmd button {
+    position: absolute; top: 8px; right: 8px; font: inherit; font-size: 13px; cursor: pointer;
+    background: var(--surface); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 4px 10px;
+  }
+  .label { font-size: 14px; color: var(--muted); margin: 0 0 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+  tr:last-child td { border-bottom: 0; }
+  .tag { font-size: 13px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+  .tag.ok { color: #15803d; border-color: #15803d; }
+  .tag.warn { color: var(--accent); border-color: var(--accent); }
+  ul.plain { padding-left: 20px; margin: 0; }
+  ul.plain li { margin-bottom: 8px; }
+  footer { padding: 32px 0 56px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+  a { color: var(--accent); }
+  @media (max-width: 680px) {
+    .steps { grid-template-columns: 1fr; }
+    .btn.ghost { margin: 10px 0 0; }
+    nav { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="brand">handoff-kit</span>
+    <nav><a href="#how">How it works</a><a href="#example">Example</a><a href="#install">Install</a><a href="#tools">Tools</a><a href="#limits">Limits</a></nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <h1>Take your AI chat<br>with you.</h1>
+      <p class="lede">Started a project in Claude Code and want to continue in ChatGPT, Gemini or Codex? <strong>handoff-kit</strong> turns the chat into a clean summary the next model can pick up without you re-explaining anything.</p>
+      <a class="btn" href="#install">Install the skill</a>
+      <a class="btn ghost" href="https://github.com/hollermay/handoff-kit">View on GitHub</a>
+    </div>
+
+    <section id="how">
+      <h2>How it works</h2>
+      <p class="sub">Runs on your machine. Python 3, no dependencies, nothing uploaded.</p>
+      <div class="steps">
+        <div class="step"><h3>Type /handoff</h3><p>The skill reads your saved chat and your git repo, and drops the noise.</p></div>
+        <div class="step"><h3>Get HANDOFF.md</h3><p>Goal, decisions with reasons, current state, results, open threads and a suggested first task.</p></div>
+        <div class="step"><h3>Paste it anywhere</h3><p>Paste it into a new chat, or upload the file. The other model never needs your tools or memory.</p></div>
+      </div>
+    </section>
+
+    <section id="example">
+      <h2>What the handoff looks like</h2>
+      <p class="sub">An example for a made-up project. The real one uses your chat and your repo.</p>
+<pre>## Session Handoff
+
+### Project
+Recipe Box: a Flutter app that saves recipes from links.
+
+### Primary Goal
+Ship an offline-first MVP that works without an account.
+
+### Decisions Made (and Why)
+- Store recipes in SQLite, not Supabase: the MVP must work offline.
+- Skip meal planning for v1: it doubled the scope in the first estimate.
+
+### Current State
+Link import works for 3 sites. Parsing fails on pages with no
+structured data (lib/import/parser.dart, line 88).
+
+### Open Threads
+1. Fallback parser for pages without structured data
+2. Share sheet on Android
+
+### Repo Snapshot
+- Branch: feature/import
+- Uncommitted changes: yes (parser.dart, 1 test file)
+- Recent commits: "Add link import", "Set up SQLite schema"
+
+### Suggested First Task
+Write a failing test for the no-structured-data case, then fix parser.dart.</pre>
+    </section>
+
+    <section id="install">
+      <h2>Install</h2>
+      <p class="sub">Works in Claude Code and Codex. For ChatGPT or Gemini, use the exported file.</p>
+      <p class="label">Install the skill (it asks which tools to add it to; add <code class="inline">-g</code> to install for all projects)</p>
+      <div class="cmd"><pre>npx skills add hollermay/handoff-kit --skill handoff</pre><button type="button" data-copy="npx skills add hollermay/handoff-kit --skill handoff">Copy</button></div>
+      <p class="label">Or from a clone, for Claude Code and Codex</p>
+      <div class="cmd"><pre>git clone https://github.com/hollermay/handoff-kit
+cd handoff-kit
+python3 -m handoff install-skill --to both</pre><button type="button" data-copy="git clone https://github.com/hollermay/handoff-kit&#10;cd handoff-kit&#10;python3 -m handoff install-skill --to both">Copy</button></div>
+      <p class="label">Then open a new session and type</p>
+      <div class="cmd"><pre>/handoff</pre><button type="button" data-copy="/handoff">Copy</button></div>
+      <p class="label">Or use the command line alone</p>
+      <div class="cmd"><pre>python3 -m handoff export --from claude --tools</pre><button type="button" data-copy="python3 -m handoff export --from claude --tools">Copy</button></div>
+      <p class="sub">Add <code class="inline">--tools</code> to include tool calls and their results, or <code class="inline">--full</code> for everything with no limits.</p>
+    </section>
+
+    <section id="tools">
+      <h2>Supported chats</h2>
+      <p class="sub">Read this before relying on a reader.</p>
+      <table>
+        <tr><th>Tool</th><th>Reads from</th><th>Status</th></tr>
+        <tr><td>Claude Code</td><td><code class="inline">~/.claude/projects</code></td><td><span class="tag ok">Checked on real sessions</span></td></tr>
+        <tr><td>Codex CLI</td><td><code class="inline">~/.codex/sessions</code></td><td><span class="tag warn">Sample files only</span></td></tr>
+        <tr><td>Gemini CLI</td><td><code class="inline">~/.gemini/tmp</code></td><td><span class="tag warn">Sample files only</span></td></tr>
+        <tr><td>ChatGPT</td><td>Data export (zip or <code class="inline">conversations.json</code>)</td><td><span class="tag warn">Sample files only</span></td></tr>
+      </table>
+    </section>
+
+    <section id="limits">
+      <h2>Privacy and limits</h2>
+      <ul class="plain">
+        <li><strong>Local only.</strong> Nothing is uploaded or sent anywhere. The skill needs no account or API key.</li>
+        <li><strong>Secrets are removed by pattern</strong> (API keys, tokens, passwords, private keys). It can miss unusual ones, so skim the file before sharing, especially with <code class="inline">--tools</code> or <code class="inline">--full</code>.</li>
+        <li><strong>Long chats are trimmed.</strong> By default it keeps the start and the most recent part, up to 60,000 characters, and tells you how many turns were dropped.</li>
+        <li><strong>Git snapshot is short.</strong> It uses a diffstat, not the full diff.</li>
+        <li><strong>Gemini's <code class="inline">logs.json</code></strong> only holds your own prompts, not the replies.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    handoff-kit is open source. Not affiliated with Anthropic, OpenAI or Google. The handoff format is based on a
+    <a href="https://gist.github.com/azhar-zuberi/2037b717ac9e65f9e288596689c4d4ab">/handoff skill gist</a> by its author.
+  </footer>
+</div>
+<script>
+  document.querySelectorAll("button[data-copy]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var text = b.getAttribute("data-copy");
+      var done = function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1500); };
+      if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done, function () {}); }
+    });
+  });
+</script>
+</body>
+</html>
